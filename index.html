@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"> </script>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js" charset="utf-8"></script>
+</head>
+
+<body>
+    <div id="myPlot"></div>
+
+    <script>
+        //valor de entrada
+        const xs = tf.tensor([0,1,2,3,4]);//tensor de rank 1, com shape de 5,1 (5 coluna|1 linha)
+        
+        //label --- valor de saída/rótulo --- para o aprendizado supervisionado
+        const ys = xs.mul(1.2).add(5);//faço o que a formula solicitou no problema dado
+        // ys.print();
+
+        //modelo de regressão linear, a saída de uma camada e entrada de outra
+        const model = tf.sequential();
+        //adiciona uma camada oculta, neste caso, uma camada densa
+        model.add(tf.layers.dense(
+            //quantos pesos para cada entrada | qts entradas
+            {units:1, inputShape:[1]}
+        ));
+
+        model.compile({loss:'meanSquaredError', optimizer:'sgd'});
+
+        //inicio o treinamento supervisionado, passo na funcao fit() os valores de entrada. todos os valores de entrada e de saída precisam ser tensores. Por ultimo definimos qts epocas (vezes), o conjunto será treinado
+        model.fit(xs,ys,{epochs:500}).then (()=> {myFunction()});
+
+
+        //depois que todas as epocas forem finalizadas, finalmente a funcao sera chamada
+        function myFunction() {
+            //crio + pontos
+            const xMax = 10;
+            //gero dois arrays para plotar um grãfico
+            const xArr = [];
+            const yArr= [];
+
+            //pego os novos elementos depois do treinamento e para cada valor do 0 ao 10 vou predizer qual será o possível valor para Y
+            for (let x = 0; x <= xMax; x++) {
+                let result = model.predict(tf.tensor([Number[x]]));
+                result.data().then(y => { //valor que foi predito será chamado Y dentro do data()
+                    xArr.push(x);
+                    yArr.push(Number(y));
+                    if(x == xMax){plot(xArr,yArr)}
+                });
+            }
+
+            //1 - descubro os pesos (momento onde faço o epochs:500)
+            //2 - gero um novo conjunto de dados (myFunction())
+            //3 - para cada valor de x, ele irá prever os valores correspondentes de Y
+
+            document.getElementById('message').style.display='none';
+        }
+
+        function plot(xArr,yArr){
+            //padrão da biblioteca do plotly
+            const data = [{x:xArr,y:yArr,mode:"markers",type:"scatter"}];
+
+            const layout = {
+                xaxis:{range:[0,10]},
+                yaxis:{range:[0,20]}
+            };
+
+            Plotly.newPlot("myPlot",data,layout);
+        }
+
+    </script>
+
+</body>
+</html>

@@ -36,19 +36,63 @@ function createModel() {
 
 function convertToTensor(data){
     return tf.tidy(()=> {
+        //embaralha os dados 
         tf.util.shuffle(data);
 
+        //cria o tensor de entrada
         const inputs = data.map(d => d.horsepower);
+        //cria um tensor de rotulos, necessario para o aprendizado supervisionado
         const labels = data.map(d => d.mpg);
 
-        const inputTensor = rf.tensor2d(inputs, [inputs.length, 1]);
-        const labelTensor = rf.tensor2d(labels, [labels.length, 1]);
+        //add os dados para cada tensor
+        //tanto para o tensor de entrada, como tb para o tensor de saida
+        const inputTensor = tf.tensor2d(inputs, [inputs.length, 1]);
+        const labelTensor = tf.tensor2d(labels, [labels.length, 1]);
 
+        //puxo os inputs e labels maximos e minimos para calcular a normalizacao (conforme a formula)
         const inputMax = inputTensor.max();
         const inputMin = inputTensor.min();
         const labelMax = labelTensor.max();
         const labelMin = labelTensor.min();
+
+        //a biblioteca faz o forEach automaticamente
+        const normalizedInputs = inputTensor.sub(inputMin).div(inputMax.sub(inputMin));
+        const normalizedLabels = labelTensor.sub(labelMin).div(labelMax.sub(labelMin));
+
+        return {
+            inputs: normalizedInputs,
+            labels: normalizedLabels,
+            inputMax,
+            inputMin,
+            labelMax,
+            labelMin,
+        };
     })
+}
+
+async function trainModel(model, inputs, labels){
+    model.compile({
+        optimizer: tf.train.adam(),
+        loss: tf.losses.meanSquaredError,
+        metrics: ["mse"], 
+    });
+
+    //seleciona o bloco, lotes, que serao treinados de cada vez
+    //diferente do perceptron que treinava todos os pontos a cada momento
+    const batchSize = 32;
+    const epochs = 50;
+
+
+    return await model.fit(inputs, labels,{
+        batchSize,
+        epochs,
+        shuffle: true,
+        callbacks: tfvis.show.fitCallbacks(
+            {name: "Performance de Treinamento"},
+            ["loss","mse"],
+            {height: 200, callbacks: ["onEpochEnd"]}
+        ),
+    });
 }
 
 async function run() {
@@ -67,7 +111,13 @@ async function run() {
             height: 300
         }
     );
-    //Add code here
+
+    const tensorData = convertToTensor(data);
+    const { inputs, labels } = tensorData;
+
+    await trainModel(model, inputs, labels);
+
+    console.log("Treinamento completo");
 }
 
 const model = createModel();
